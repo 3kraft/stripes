@@ -50,11 +50,17 @@ public class JsonBuilder extends ObjectOutputBuilder<JsonBuilder> {
     public void build(Writer writer) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(Include.NON_NULL);
-        mapper.addMixInAnnotations(Object.class, DynamicPropertyFilterMixin.class);
-        FilterProvider filterProvider = new SimpleFilterProvider()
-                .addFilter("dynamicPropertyFilter",
+        // When the response is a map, we cannot use a SimpleBeanPropertyFilter as
+        // this requires a bean and will fail with a map.
+        // The response is a map when validation errors happen.
+        if (getExcludedProperties() != null && getExcludedProperties().size() > 0) {
+            mapper.addMixInAnnotations(Object.class, DynamicPropertyFilterMixin.class);      
+            FilterProvider filterProvider = new SimpleFilterProvider().addFilter("dynamicPropertyFilter",
                         SimpleBeanPropertyFilter.serializeAllExcept(getExcludedProperties()));
-        mapper.writer(filterProvider).writeValue(writer, getRootObject());
+            mapper.writer(filterProvider).writeValue(writer, getRootObject());      
+        } else {
+            mapper.writer().writeValue(writer, getRootObject());
+        }
     }
 
     /**
